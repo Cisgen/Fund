@@ -6,6 +6,7 @@ import ctypes
 import sys
 import multiprocessing
 import openpyxl
+from datetime import datetime
 
 
 LogFileName = "log.txt"
@@ -17,35 +18,42 @@ def func(xls_name):
 	StyleTime = time.strftime("%Y-%m-%d_%H%M%S", timeArray)
 	ouputname = xls_name.split(".")[0] + "_" + StyleTime + "_out.xlsx"
 	
+	nowtime = datetime.now()
+	timeLog = nowtime.strftime("%Y-%m-%d, %H:%M:%S")
+
 	print("执行中....")
 	#错误列表
 	fileLog = open(os.path.join(path, LogFileName),'a+')
-	fileLog.write("=======================================================\n")
+	fileLog.write("本次时间：\t" + timeLog + "\n")
 	fileLog.write(ouputname + "\n")
 	error_list = []
 	file_name = os.path.join(path, xls_name)
 	sheet_names = openpyxl.load_workbook(file_name)
-	sheet = sheet_names.active
-	for row in sheet:
-		row_value = row[0].value
-		if isinstance(row_value, int):
-			continue
-		elif isinstance(row_value, float):
-			row_value = int(row_value)
-			print("当前转换中 ：" + str(row[0].coordinate) + "\t" + str(row[0].value) + " ==> " + str(row_value))
-			fileLog.write("当前转换中 ：" + str(row[0].coordinate) + "\t" + str(row[0].value) + " ==> " + str(row_value) + "\n")
-		elif isinstance(row_value, str):
-			error_list.append(str(row[0].coordinate) + "\t" + row_value)
-			continue
-		row[0].value = row_value
-		
+	for worksheet in sheet_names:
+		print(worksheet)
+		for row in worksheet:
+			row_value = row[0].value
+			if isinstance(row_value, int):
+				continue
+			elif isinstance(row_value, float):
+				row_value = int(row_value)
+				info = timeLog + "\t" + str(worksheet) + "\t转换格式 ：" + "\t" + str(row[0].coordinate) + "\t" + str(row[0].value) + " ==> " + str(row_value)
+				print(info)
+				fileLog.write(info + "\n")
+			elif isinstance(row_value, str):
+				info = timeLog + "\t" + str(worksheet) + "\t无效字符格式："  + "\t" + str(row[0].coordinate) + "\t" + row_value
+				print(info)
+				fileLog.write(info + "\n")
+				error_list.append(info)
+				continue
+			row[0].value = row_value
 	sheet_names.save(filename = ouputname)
 	
 	#打印下错误的列表信息
 	if error_list:
 		print("=======================================================")
-		print(xls_name + " 以下列表未成功转换")
-		fileLog.write(xls_name + " 以下列表未成功转换" + "\n")
+		print(xls_name + " 以下列表未成功转换，请检查")
+		fileLog.write(xls_name + " 以下列表未成功转换，请检查" + "\n")
 		for i in error_list:
 			print(i)
 			fileLog.write(i + "\n")
@@ -67,8 +75,6 @@ def main():
 		
 	for target_path in filenamelist:
 		func(target_path)
-	
-
 	
 	# pool = multiprocessing.Pool(processes = 4)
 	# for i in filenamelist:
