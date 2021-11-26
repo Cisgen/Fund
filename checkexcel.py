@@ -7,16 +7,21 @@ import sys
 import multiprocessing
 import openpyxl
 
+
+LogFileName = "log.txt"
 def func(xls_name):
 	print("xls_name :", xls_name)
 	path = os.getcwd()
 	timeStamp = time.time()
 	timeArray = time.localtime(timeStamp)
 	StyleTime = time.strftime("%Y-%m-%d_%H%M%S", timeArray)
-	ouputname = StyleTime + "_out.xlsx"
+	ouputname = xls_name.split(".")[0] + "_" + StyleTime + "_out.xlsx"
 	
 	print("执行中....")
 	#错误列表
+	fileLog = open(os.path.join(path, LogFileName),'a+')
+	fileLog.write("=======================================================\n")
+	fileLog.write(ouputname + "\n")
 	error_list = []
 	file_name = os.path.join(path, xls_name)
 	sheet_names = openpyxl.load_workbook(file_name)
@@ -27,15 +32,24 @@ def func(xls_name):
 			continue
 		elif isinstance(row_value, float):
 			row_value = int(row_value)
+			print("当前转换中 ：" + str(row[0].coordinate) + "\t" + str(row[0].value) + " ==> " + str(row_value))
+			fileLog.write("当前转换中 ：" + str(row[0].coordinate) + "\t" + str(row[0].value) + " ==> " + str(row_value) + "\n")
 		elif isinstance(row_value, str):
-			error_list.append(str(row[0].coordinate)+"\t" + row_value)
+			error_list.append(str(row[0].coordinate) + "\t" + row_value)
 			continue
 		row[0].value = row_value
+		
 	sheet_names.save(filename = ouputname)
 	
 	#打印下错误的列表信息
-	for i in error_list:
-		print(i)
+	if error_list:
+		print("=======================================================")
+		print(xls_name + " 以下列表未成功转换")
+		fileLog.write(xls_name + " 以下列表未成功转换" + "\n")
+		for i in error_list:
+			print(i)
+			fileLog.write(i + "\n")
+	fileLog.close()
 
 def main():
 	print("主进程开始")
@@ -48,20 +62,24 @@ def main():
 				if "out" not in file_data:
 					filenamelist.append(file_data);
 	
+	if os.path.exists(LogFileName): 
+		os.remove(LogFileName)  
+		
 	for target_path in filenamelist:
 		func(target_path)
+	
+
 	
 	# pool = multiprocessing.Pool(processes = 4)
 	# for i in filenamelist:
 		# pool.apply_async(func, (i,))
-
 	# pool.close()
 	# pool.join()
 	if filenamelist:
 		print("主进程结束....")
-		time.sleep(5)
+		time.sleep(3)
 	else :
 		print("当前没有需要转换的文件...")
-		time.sleep(2)
+		time.sleep(3)
 if __name__ == '__main__':
 	main()
