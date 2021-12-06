@@ -192,7 +192,9 @@ def printYellowRed(mess):
 def getClo(worksheet):
 	for row in worksheet.rows:
 		for cell in row:
-			if "组件" in str(cell.value):
+			if "组件" == str(cell.value):
+				return cell.column
+			elif "料号" == str(cell.value):
 				return cell.column
 	return 1
 	
@@ -203,67 +205,69 @@ def func(xls_name):
 	timeStamp = time.time()
 	timeArray = time.localtime(timeStamp)
 	StyleTime = time.strftime("%Y-%m-%d_%H%M%S", timeArray)
-	ouputname = xls_name.split(".")[0] + "_" + StyleTime + "_out.xlsx"
 	
 	nowtime = datetime.now()
 	timeLog = nowtime.strftime("%Y-%m-%d, %H:%M:%S")
 
 	printGreen("执行中....\n")
-	#错误列表
-	# fileLog = open(os.path.join(path, LogFileName),'a+')
 	printGreen("本次时间：\t" + timeLog + "\n")
-	printGreen(ouputname + "\n")
-	# error_list = []
 	file_name = os.path.join(path, xls_name)
-    
-	sheet_names = openpyxl.load_workbook(file_name)
-	for worksheet in sheet_names:
-		if "_汇总数据" in str(worksheet.title):
-			continue
-		dict_data = {}
-		dict_data.clear()
-		keyIndex = getClo(worksheet)
-		for row in worksheet.rows:
-			key = row[keyIndex - 1].value
-			
-			# 修改一下对应的key
-			if isinstance(key, float):
-				key = int(key)
-				key = str(key)
-			elif isinstance(key, int):
-				key = str(key)
-			elif isinstance(key, str):
-				if "." in key:
-					key = key.split(".")[0]
-			
-			value_list = []	
-			value_list.clear()
-			value_list.append(key)
-			
-			for cell in row:
-				#判断是否为map 的key
-				if cell.column == keyIndex:
+	try:
+		sheet_names = openpyxl.load_workbook(file_name)
+		for worksheet in sheet_names:
+			if "_汇总数据" in str(worksheet.title):
+				continue
+			dict_data = {}
+			dict_data.clear()
+			keyIndex = getClo(worksheet)
+			for row in worksheet.rows:
+				key = row[keyIndex - 1].value
+				# 修改一下对应的key
+				if isinstance(key, float):
+					key = int(key)
+					key = str(key)
+				elif isinstance(key, int):
+					key = str(key)
+				elif isinstance(key, str):
+					if "." in key:
+						key = key.split(".")[0]
+				if key == None:
 					continue
-				else:
-					value_list.append(cell.value)
-					
-			#判断key 之前是否存在
-			if key not in dict_data:
-				dict_data[key] = value_list
-			else:
-				#合并一下数据
-				last_val = dict_data[key]
-				for i in range(len(last_val)):
-					if value_list[i] == last_val[i]:
-						continue
-					else:
-						last_val[i] = last_val[i] + value_list[i]
-	
-		newSheet = sheet_names.create_sheet(worksheet.title + "_汇总数据")
-		for key,value in dict_data.items():
-			newSheet.append(value)
+				value_list = []	
+				value_list.clear()
+				value_list.append(key)
 			
-	sheet_names.save(filename = file_name)
+				for cell in row:
+					#判断是否为map 的key
+					if cell.column == keyIndex:
+						continue
+					if cell.value == None:
+						value_list.append(" ")
+					else:
+						value_list.append(str(cell.value))
+					
+				#判断key 之前是否存在
+				if key not in dict_data:
+					dict_data[key] = value_list
+				else:
+					#合并一下数据
+					for i in range(len(value_list)):
+						if value_list[i] == None:
+							continue
+						if value_list[i] in dict_data[key][i]:
+							continue
+						else:
+							dict_data[key][i] = dict_data[key][i] + " " + value_list[i]
+	
+			newSheet = sheet_names.create_sheet(worksheet.title + "_汇总数据")
+			printGreen(worksheet.title + "_汇总数据" + "\n")
+			for key,value in dict_data.items():
+				newSheet.append(value)
+			
+		sheet_names.save(filename = file_name)
+	except Exception as info:
+		print(info)
+		printRed("转换出错\n")
 	
 def main():
 	printGreen("转换开始\n")
@@ -278,10 +282,11 @@ def main():
 	
 	if os.path.exists(LogFileName): 
 		os.remove(LogFileName)  
-		
-	for target_path in filenamelist:
-		func(target_path)
-	
+	try:
+		for target_path in filenamelist:
+			func(target_path)
+	except Exception as info:
+		print(info)
 	# pool = multiprocessing.Pool(processes = 4)
 	# for i in filenamelist:
 		# pool.apply_async(func, (i,))
